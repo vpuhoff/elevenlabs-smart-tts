@@ -9,7 +9,9 @@ task = SynthesisTask(
     text="Добро пожаловать в наш сервис поддержки.",
     language="ru",
     style="professional",
-    use_case="customer_support",
+    emotion="warm",
+    use_case="conversational",
+    voice_description="warm conversational professional",
 )
 
 output_path = Path("output.mp3")

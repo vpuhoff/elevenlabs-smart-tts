@@ -51,7 +51,8 @@ result = tts.synthesize_to_file(
         language="en",
         style="professional",
         emotion="warm",
-        use_case="customer_support",
+        use_case="conversational",
+        voice_description="warm professional conversational",
     ),
     Path("output.mp3"),
 )
@@ -60,6 +61,114 @@ print(result.enhanced_text)
 ```
 
 See [`example.py`](example.py) for a full runnable example.
+
+## Task parameters
+
+`SynthesisTask` accepts free-text hints that guide **voice selection** and **LLM text enhancement**. After `sync_voices()`, inspect your cached catalog:
+
+```python
+for voice in tts.list_voices():
+    print(voice.name, voice.labels.get("use_case"), voice.description)
+```
+
+The examples below come from the ElevenLabs premade voice catalog.
+
+### `use_case`
+
+Used for voice matching against the ElevenLabs voice label `labels.use_case` (exact match scores highest).
+
+| Value | Typical voices |
+|-------|----------------|
+| `conversational` | Casual, agentic, podcast-style voices (e.g. Roger, Eric, Juniper) |
+| `informative_educational` | Clear educators, broadcasters (e.g. Alice, Matilda, Daniel) |
+| `narrative_story` | Storytellers, audiobook voices (e.g. George, Daria Reels) |
+| `advertisement` | Promo and ad reads (e.g. Bill) |
+| `social_media` | Short-form, trendy content |
+| `characters_animation` | Character and animation voices |
+| `entertainment_tv` | TV and entertainment narration |
+
+`customer_support` is **not** an ElevenLabs label — it still helps the LLM, but for voice selection prefer `conversational` or pass `voice_description="professional support warm"`.
+
+```python
+# Support-style call center message
+SynthesisTask(
+    text="Thanks for calling. How can I help you today?",
+    language="en",
+    use_case="conversational",
+    style="professional",
+    emotion="warm",
+    voice_description="trustworthy professional",
+)
+
+# Audiobook / long-form narration
+SynthesisTask(
+    text="Chapter one. It was a dark and stormy night.",
+    use_case="narrative_story",
+    style="warm",
+    emotion="calm",
+)
+
+# E-learning explainer
+SynthesisTask(
+    text="Today we'll learn how photosynthesis works.",
+    use_case="informative_educational",
+    style="professional",
+    emotion="neutral",
+)
+```
+
+### `style`
+
+Free-form delivery hint. Affects the **LLM enhancement prompt** and weak voice matching against voice name, description, and custom tags.
+
+Common values that match premade voice descriptions:
+
+| Value | Effect |
+|-------|--------|
+| `professional` | Formal, clear delivery |
+| `casual` / `conversational` | Relaxed, everyday tone |
+| `warm` | Friendly, inviting tone |
+| `neutral` | Balanced, informative |
+| `dramatic` | Strong emphasis, expressive pacing |
+| `playful` | Light, energetic tone |
+| `sympathetic` | Soft, empathetic delivery |
+
+```python
+SynthesisTask(text="...", style="professional")   # business / IVR
+SynthesisTask(text="...", style="casual")         # laid-back chat
+SynthesisTask(text="...", style="dramatic")       # emotional scene
+```
+
+### `emotion`
+
+Free-form mood hint for **LLM text enhancement only** (drives audio tags like `[excited]`, `[whispers]`, `[sighs]`). Does not filter voices.
+
+| Value | Typical audio tag behavior |
+|-------|----------------------------|
+| `warm` | Friendly, reassuring tone |
+| `calm` | Steady, subdued delivery |
+| `excited` | Higher energy, `[excited]` tags |
+| `sympathetic` | Soft, caring tone |
+| `curious` | Questioning, engaged tone |
+| `appalled` / `sarcastic` | Strong expressive tags |
+| `neutral` | Minimal emotional markup |
+
+```python
+SynthesisTask(text="...", emotion="warm")         # customer greeting
+SynthesisTask(text="...", emotion="excited")      # product launch
+SynthesisTask(text="...", emotion="sympathetic")  # apology or support
+SynthesisTask(text="...", emotion="neutral")     # plain narration
+```
+
+### Combining parameters
+
+| Scenario | Example values |
+|----------|----------------|
+| Customer support (EN) | `use_case="conversational"`, `style="professional"`, `emotion="warm"` |
+| News / podcast intro | `use_case="informative_educational"`, `style="neutral"`, `emotion="calm"` |
+| Audiobook chapter | `use_case="narrative_story"`, `style="warm"`, `emotion="calm"` |
+| Social reel | `use_case="social_media"`, `style="playful"`, `emotion="excited"` |
+| Ad read | `use_case="advertisement"`, `style="confident"`, `emotion="excited"` |
 
 ## Configuration
 
