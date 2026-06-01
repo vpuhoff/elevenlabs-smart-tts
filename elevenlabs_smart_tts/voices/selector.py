@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import random
 
 from elevenlabs_smart_tts.config import SmartTTSConfig
 from elevenlabs_smart_tts.exceptions import ModelVoiceIncompatibleError, VoiceCacheEmptyError, VoiceNotFoundError
@@ -50,19 +51,26 @@ class VoiceSelector:
             return voice
 
         if self._config.default_voice_id:
-            voice = self._find_by_id(self._config.default_voice_id, voices)
-            self._validate_model_compatibility(voice, model)
-            logger.info(
-                "voice_selected",
-                extra={
-                    "voice_id": voice.voice_id,
-                    "score": None,
-                    "reason": "default_voice_id",
-                },
-            )
-            return voice
+            try:
+                voice = self._find_by_id(self._config.default_voice_id, voices)
+            except VoiceNotFoundError:
+                logger.warning(
+                    "default_voice_id missing from cache, using random fallback",
+                    extra={"default_voice_id": self._config.default_voice_id},
+                )
+            else:
+                self._validate_model_compatibility(voice, model)
+                logger.info(
+                    "voice_selected",
+                    extra={
+                        "voice_id": voice.voice_id,
+                        "score": None,
+                        "reason": "default_voice_id",
+                    },
+                )
+                return voice
 
-        raise VoiceNotFoundError("Unable to select a voice for the given task.")
+        return self._pick_random_voice(voices, model)
 
     def _find_by_id(self, voice_id: str, voices: list[CachedVoice]) -> CachedVoice:
         for voice in voices:
@@ -147,3 +155,18 @@ class VoiceSelector:
             raise ModelVoiceIncompatibleError(
                 f"Voice {voice.voice_id} ({voice.category}) is not recommended for eleven_v3."
             )
+
+    def _compatible_voices(self, voices: list[CachedVoice], model: TTSModel) -> list[CachedVoice]:
+        if model == TTSModel.ELEVEN_V3:
+            compatible = [voice for voice in voices if not self._is_pvc(voice)]
+            return compatible or voices
+        return voices
+
+    def _pick_random_voice(self, voices: list[CachedVoice], model: TTSModel) -> CachedVoice:
+        pool = self._compatible_voices(voices, model)
+        voice = random.choice(pool)
+        logger.warning(
+            "voice_selected",
+            extra={"voice_id": voice.voice_id, "score": None, "reason": "random_fallback"},
+        )
+        return voice

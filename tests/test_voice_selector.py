@@ -52,7 +52,7 @@ def test_select_missing_voice_raises(config, sample_voice) -> None:
         selector.select(task, [sample_voice])
 
 
-def test_select_without_default_raises_when_no_match(config, sample_voice) -> None:
+def test_select_random_fallback_when_no_match(config, sample_voice) -> None:
     config_no_default = SmartTTSConfig(
         elevenlabs_api_key=config.elevenlabs_api_key,
         openrouter_api_key=config.openrouter_api_key,
@@ -62,5 +62,12 @@ def test_select_without_default_raises_when_no_match(config, sample_voice) -> No
     )
     selector = VoiceSelector(config_no_default)
     task = SynthesisTask(text="Hello", style="unknown-style")
-    with pytest.raises(VoiceNotFoundError):
-        selector.select(task, [sample_voice])
+    voice = selector.select(task, [sample_voice])
+    assert voice.voice_id == sample_voice.voice_id
+
+
+def test_select_random_fallback_when_default_missing_from_cache(config, sample_voice) -> None:
+    selector = VoiceSelector(config)
+    task = SynthesisTask(text="Hello", style="unknown-style")
+    voice = selector.select(task, [sample_voice])
+    assert voice.voice_id == sample_voice.voice_id
